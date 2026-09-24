@@ -47,7 +47,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const border = isDark ? 'border-white/10' : 'border-slate-200/80';
 
   return (
-    <div className={`overflow-hidden ${surface}`}>
+    <div className={`min-h-[100dvh] w-full overflow-hidden ${surface}`}>
       <div className="landing-grid pointer-events-none absolute inset-0 opacity-70" />
       <div className="landing-glow landing-glow-one pointer-events-none" />
       <div className="landing-glow landing-glow-two pointer-events-none" />
