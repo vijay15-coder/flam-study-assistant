@@ -60,28 +60,35 @@ Guidelines:
 
 	try {
 		const ai = new GoogleGenAI({ apiKey });
-		const response = await ai.models.generateContent({
-			model: 'gemini-3.6-flash',
-			contents: prompt,
-			config,
-		});
-		const rawText = response.text?.trim();
-		if (!rawText) throw new Error('Empty response received from AI model.');
+		const models = ['gemini-3.6-flash', 'gemini-3.1-flash-lite', 'gemini-3.8-flash'];
+		let lastError: unknown = null;
 
-		const parsed = JSON.parse(rawText);
-		if (!parsed || !Array.isArray(parsed.cards) || parsed.cards.length < MIN_GENERATED_CARDS) {
-			res.status(502).json({
-				error: `AI returned fewer than ${MIN_GENERATED_CARDS} valid flashcards. Please try again.`,
-			});
-			return;
+		for (const model of models) {
+			try {
+				const response = await ai.models.generateContent({ model, contents: prompt, config });
+				const rawText = response.text?.trim();
+				if (!rawText) throw new Error('Empty response received from AI model.');
+
+				const parsed = JSON.parse(rawText);
+				if (!parsed || !Array.isArray(parsed.cards) || parsed.cards.length < MIN_GENERATED_CARDS) {
+					throw new Error(`AI returned fewer than ${MIN_GENERATED_CARDS} valid flashcards.`);
+				}
+
+				res.status(200).json(parsed);
+				return;
+			} catch (error) {
+				lastError = error;
+				console.warn(`Gemini model ${model} failed; trying fallback.`);
+			}
 		}
 
-		res.status(200).json(parsed);
-	} catch (error: any) {
-		console.error('Vercel generation error:', error);
+		console.error('All Gemini models failed:', lastError);
 		res.status(500).json({
 			error: 'Failed to generate flashcards due to a server error.',
-			details: error?.message || 'Unknown server error.',
+			details: lastError instanceof Error ? lastError.message : 'All configured AI models were unavailable.',
 		});
+	} catch (error: any) {
+		console.error('Vercel generation setup error:', error);
+		res.status(500).json({ error: 'Failed to initialize flashcard generation.' });
 	}
 }
