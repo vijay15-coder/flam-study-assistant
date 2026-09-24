@@ -10,11 +10,10 @@ dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const app = express();
+export const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 const MIN_GENERATED_CARDS = 20;
-const REQUEST_TIMEOUT_MS = 30000;
 
 app.use(express.json({ limit: '1mb' }));
 
@@ -136,18 +135,11 @@ Guidelines:
 
     for (const modelName of candidateModels) {
       try {
-        const response = await Promise.race([
-          aiClient.models.generateContent({
-            model: modelName,
-            contents: prompt,
-            config: modelConfig,
-          }),
-          new Promise<never>((_, reject) => {
-            setTimeout(() => {
-              reject(new Error(`AI request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds.`));
-            }, REQUEST_TIMEOUT_MS);
-          }),
-        ]);
+        const response = await aiClient.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: modelConfig,
+        });
         rawText = response.text;
         if (rawText) {
           console.log(`Successfully generated flashcards using ${modelName}`);
@@ -236,6 +228,8 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+  });
+}
